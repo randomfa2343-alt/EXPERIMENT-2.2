@@ -12,6 +12,7 @@
 <body>
   <canvas id="bg"></canvas>
   <div class="dust"></div>
+  <div class="flash" id="flash"></div>
 
   <div class="ui">
     <header>
@@ -38,19 +39,25 @@
           <div class="ring ring1"></div>
           <div class="ring ring2"></div>
           <div class="ring ring3"></div>
+          <div class="burst" id="burst"></div>
         </div>
 
         <div class="runes" id="runes">
-          <button class="rune-btn" data-power="fire">🔥</button>
-          <button class="rune-btn" data-power="water">💧</button>
-          <button class="rune-btn" data-power="earth">🌍</button>
-          <button class="rune-btn" data-power="air">🌪️</button>
-          <button class="rune-btn" data-power="spirit">✨</button>
+          <button class="rune-btn" data-power="fire" title="Flame">🔥</button>
+          <button class="rune-btn" data-power="water" title="Water">💧</button>
+          <button class="rune-btn" data-power="earth" title="Earth">🌍</button>
+          <button class="rune-btn" data-power="air" title="Air">🌪️</button>
+          <button class="rune-btn" data-power="spirit" title="Spirit">✨</button>
         </div>
 
         <div class="actions">
           <button class="action-btn" id="channel-btn">Channel Power</button>
           <button class="action-btn secondary" id="reset-btn">Reset Chamber</button>
+        </div>
+
+        <div class="combo-meter" id="combo-meter">
+          <div class="combo-fill" id="combo-fill"></div>
+          <span id="combo-text">Combo x0</span>
         </div>
       </section>
 
