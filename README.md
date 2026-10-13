@@ -1,18 +1,17 @@
 # Cubara — Voxel Sandbox
 
-A browser-based voxel building game inspired by block-building sandboxes.
-Original branding and assets — no copyrighted material from other games.
+A browser-based voxel building game. Original branding and assets.
 
 ## Play
 
-Open **https://randomfa2343-alt.github.io/EXPERIMENT-2.2/**  
-or open `index.html` in a modern browser (Chrome, Firefox, Edge).
+**https://randomfa2343-alt.github.io/EXPERIMENT-2.2/**
 
-> **Note:** Requires a local server or GitHub Pages for ES modules.  
-> If opening as a file, use a simple static server:
-> ```bash
-> npx serve .
-> ```
+Or locally (ES modules need a server):
+
+```bash
+npx serve .
+# then open the URL it prints
+```
 
 ## Controls
 
@@ -21,40 +20,42 @@ or open `index.html` in a modern browser (Chrome, Firefox, Edge).
 | Move | WASD |
 | Look | Mouse |
 | Jump | Space |
-| Break block | Left click |
-| Place block | Right click |
-| Select block | 1–8 or mouse wheel |
+| Break | Left click |
+| Place | Right click |
+| Select block | 1–8 or scroll |
 | Lock pointer | Click the page |
 
-## Features
+## Performance notes
 
-- First-person 3D voxel world
-- Procedural terrain (grass, dirt, stone, sand, trees)
-- Break and place blocks
-- Hotbar with 8 block types
-- Collision detection
-- Block targeting highlight + crosshair
-- Colorful low-poly style
+The first version created **one Three.js Mesh per block** (~15–25k meshes) and enabled shadows on all of them, which caused heavy lag.
 
-## Tech
+**Optimizations applied:**
 
-- Three.js (WebGL)
-- Vanilla ES modules
-- No build step required
+1. **Batched face-culled geometry** — only exposed faces are built; one `BufferGeometry` + `Mesh` per block type (≈8 draw calls instead of thousands).
+2. **No per-block meshes** — buried blocks never generate geometry.
+3. **Shadows disabled** — directional + ambient light only.
+4. **Pixel ratio capped** at 1.5.
+5. **Antialiasing off** for GPU savings.
+6. **Reused vectors** in movement and block targeting (no per-frame `new THREE.Vector3()`).
+7. **Deferred mesh rebuild** — break/place queues a single rebuild on the next frame.
+
+Break and place still work; the world mesh rebuilds after each edit.
+
+World size is 48×48 blocks. Further gains would come from chunking or instancing for larger maps.
 
 ## Project structure
 
 ```
 index.html
 css/style.css
-js/
-  main.js      — entry, render loop, input
-  world.js     — terrain generation & block storage
-  player.js    — movement, physics, controls
-  blocks.js    — block type definitions
+js/main.js      — render loop, input, targeting
+js/world.js     — data + batched mesh builder
+js/player.js    — movement & collision
+js/blocks.js    — block type definitions
 README.md
 ```
 
-## License
+## Tech
 
-Original work for Experiment 2.2. Free to use and modify.
+- Three.js r160 (ES modules via CDN)
+- No build step
