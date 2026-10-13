@@ -3,102 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EXPERIMENT 2.2</title>
+  <title>Ancient Experiment 2.2</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=MedievalSharp&display=swap" rel="stylesheet">
 </head>
 <body>
   <canvas id="bg"></canvas>
+  <div class="dust"></div>
 
-  <div class="scanlines"></div>
-  <div class="vignette"></div>
-
-  <header>
-    <div class="logo">
-      <span class="bracket">[</span>
-      <span class="logo-text">EXPERIMENT</span>
-      <span class="version">2.2</span>
-      <span class="bracket">]</span>
-    </div>
-    <div class="status">
-      <span class="dot"></span>
-      <span id="status-text">SYSTEM ONLINE</span>
-    </div>
-  </header>
-
-  <main>
-    <section class="hero">
-      <h1 class="glitch" data-text="EXPERIMENT 2.2">EXPERIMENT 2.2</h1>
-      <p class="tagline">Interactive prototype environment // build · test · break · iterate</p>
-      <div class="cta-row">
-        <button class="btn primary" id="run-btn">▶ RUN EXPERIMENT</button>
-        <button class="btn secondary" id="reset-btn">↺ RESET</button>
+  <div class="ui">
+    <header>
+      <div class="title">
+        <span class="rune">✦</span>
+        <h1>ANCIENT EXPERIMENT</h1>
+        <span class="version">II.II</span>
+        <span class="rune">✦</span>
       </div>
-    </section>
-
-    <section class="panels">
-      <div class="panel" data-id="1">
-        <div class="panel-header">
-          <span class="panel-id">01</span>
-          <span class="panel-title">PARTICLE FIELD</span>
-        </div>
-        <div class="panel-body">
-          <p>Click to inject energy into the particle system. Watch the field respond in real time.</p>
-          <button class="panel-btn" data-action="particles">INJECT</button>
-        </div>
+      <div class="score-box">
+        <span>Essence</span>
+        <strong id="score">0</strong>
       </div>
+    </header>
 
-      <div class="panel" data-id="2">
-        <div class="panel-header">
-          <span class="panel-id">02</span>
-          <span class="panel-title">GLITCH PROTOCOL</span>
-        </div>
-        <div class="panel-body">
-          <p>Trigger controlled visual corruption. The system will recover after a short burst.</p>
-          <button class="panel-btn" data-action="glitch">ACTIVATE</button>
-        </div>
-      </div>
+    <main>
+      <section class="story">
+        <p id="story-text">You stand before the sealed Chamber of Trials. The ancient runes await your touch...</p>
+      </section>
 
-      <div class="panel" data-id="3">
-        <div class="panel-header">
-          <span class="panel-id">03</span>
-          <span class="panel-title">SIGNAL SCAN</span>
+      <section class="game-area">
+        <div class="artifact" id="artifact">
+          <div class="crystal" id="crystal">◆</div>
+          <div class="ring ring1"></div>
+          <div class="ring ring2"></div>
+          <div class="ring ring3"></div>
         </div>
-        <div class="panel-body">
-          <p>Initiate a full spectrum scan. Results appear in the console below.</p>
-          <button class="panel-btn" data-action="scan">SCAN</button>
-        </div>
-      </div>
 
-      <div class="panel" data-id="4">
-        <div class="panel-header">
-          <span class="panel-id">04</span>
-          <span class="panel-title">CORE TEMP</span>
+        <div class="runes" id="runes">
+          <button class="rune-btn" data-power="fire">🔥</button>
+          <button class="rune-btn" data-power="water">💧</button>
+          <button class="rune-btn" data-power="earth">🌍</button>
+          <button class="rune-btn" data-power="air">🌪️</button>
+          <button class="rune-btn" data-power="spirit">✨</button>
         </div>
-        <div class="panel-body">
-          <div class="temp-display">
-            <span id="temp-value">37.2</span><span class="unit">°C</span>
-          </div>
-          <button class="panel-btn" data-action="heat">OVERCLOCK</button>
+
+        <div class="actions">
+          <button class="action-btn" id="channel-btn">Channel Power</button>
+          <button class="action-btn secondary" id="reset-btn">Reset Chamber</button>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="console">
-      <div class="console-header">
-        <span>// LIVE CONSOLE</span>
-        <span id="console-time"></span>
-      </div>
-      <div class="console-body" id="console"></div>
-    </section>
-  </main>
+      <section class="log">
+        <div class="log-title">Chronicle of the Experiment</div>
+        <div class="log-body" id="log"></div>
+      </section>
+    </main>
 
-  <footer>
-    <span>EXPERIMENT-2.2 · DEMO BUILD</span>
-    <span>randomfa2343-alt</span>
-  </footer>
+    <footer>
+      <span>The Lost Temple · Experiment 2.2</span>
+      <span id="level">Trial 1</span>
+    </footer>
+  </div>
 
   <script src="script.js"></script>
 </body>
