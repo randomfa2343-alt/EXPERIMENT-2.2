@@ -1,320 +1,439 @@
-// Ancient Experiment 2.2 — Mini Game + Sounds & Animations
+// GALAXY ATTACK · Experiment 2.2
+// Classic space shooter
 
-// ========== AUDIO (Web Audio API) ==========
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let audioCtx = null;
-
-function initAudio() {
-  if (!audioCtx) audioCtx = new AudioCtx();
-}
-
-function playTone(freq, type, duration, volume = 0.15, ramp = true) {
-  if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.value = volume;
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  const now = audioCtx.currentTime;
-  if (ramp) {
-    gain.gain.setValueAtTime(volume, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-  }
-  osc.start(now);
-  osc.stop(now + duration);
-}
-
-function playRuneSelect() {
-  initAudio();
-  playTone(520, 'triangle', 0.12, 0.12);
-  setTimeout(() => playTone(780, 'triangle', 0.1, 0.08), 40);
-}
-
-function playChannel() {
-  initAudio();
-  playTone(180, 'sawtooth', 0.25, 0.1);
-  setTimeout(() => playTone(320, 'triangle', 0.2, 0.12), 60);
-  setTimeout(() => playTone(480, 'sine', 0.3, 0.1), 120);
-}
-
-function playCritical() {
-  initAudio();
-  playTone(660, 'square', 0.15, 0.1);
-  setTimeout(() => playTone(880, 'square', 0.15, 0.1), 80);
-  setTimeout(() => playTone(1100, 'triangle', 0.25, 0.12), 160);
-}
-
-function playScore() {
-  initAudio();
-  playTone(740, 'sine', 0.1, 0.08);
-}
-
-function playLevelUp() {
-  initAudio();
-  const notes = [523, 659, 784, 1046];
-  notes.forEach((n, i) => {
-    setTimeout(() => playTone(n, 'triangle', 0.35, 0.14), i * 120);
-  });
-}
-
-function playReset() {
-  initAudio();
-  playTone(300, 'sawtooth', 0.2, 0.08);
-  setTimeout(() => playTone(200, 'sawtooth', 0.3, 0.06), 100);
-}
-
-function playCrystalTap() {
-  initAudio();
-  playTone(900, 'sine', 0.08, 0.1);
-  setTimeout(() => playTone(1200, 'sine', 0.12, 0.07), 50);
-}
-
-// ========== CANVAS BACKGROUND ==========
-const canvas = document.getElementById('bg');
+const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-let particles = [];
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
 }
 window.addEventListener('resize', resize);
 resize();
 
-class Particle {
-  constructor() {
-    this.reset(true);
-  }
-  reset(initial = false) {
-    this.x = Math.random() * canvas.width;
-    this.y = initial ? Math.random() * canvas.height : canvas.height + 10;
-    this.size = Math.random() * 2.5 + 0.5;
-    this.speed = Math.random() * 0.7 + 0.25;
-    this.alpha = Math.random() * 0.5 + 0.15;
-    this.drift = (Math.random() - 0.5) * 0.5;
-    this.color = Math.random() > 0.65 ? 'gold' : 'mystic';
-  }
-  update() {
-    this.y -= this.speed;
-    this.x += this.drift;
-    if (this.y < -10) this.reset();
-  }
-  draw() {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = this.color === 'gold'
-      ? `rgba(212, 160, 23, ${this.alpha})`
-      : `rgba(155, 93, 229, ${this.alpha})`;
-    ctx.fill();
-  }
+// ========== AUDIO ==========
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx = null;
+function initAudio() {
+  if (!actx) actx = new AudioCtx();
 }
-
-for (let i = 0; i < 60; i++) particles.push(new Particle());
-
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const g = ctx.createRadialGradient(
-    canvas.width / 2, canvas.height * 0.38, 0,
-    canvas.width / 2, canvas.height * 0.38, canvas.width * 0.65
-  );
-  g.addColorStop(0, 'rgba(44, 33, 24, 0.45)');
-  g.addColorStop(1, 'rgba(26, 18, 11, 0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  particles.forEach(p => { p.update(); p.draw(); });
-  requestAnimationFrame(animate);
+function tone(freq, type, dur, vol = 0.1) {
+  if (!actx) return;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g);
+  g.connect(actx.destination);
+  const t = actx.currentTime;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.start(t);
+  o.stop(t + dur);
 }
-animate();
+function sfxShoot() { tone(880, 'square', 0.08, 0.06); }
+function sfxHit() { tone(150, 'sawtooth', 0.15, 0.1); }
+function sfxExplosion() {
+  tone(120, 'sawtooth', 0.3, 0.12);
+  setTimeout(() => tone(80, 'sawtooth', 0.4, 0.08), 50);
+}
+function sfxPower() { tone(600, 'sine', 0.1, 0.1); setTimeout(() => tone(900, 'sine', 0.15, 0.1), 80); }
+function sfxGameOver() {
+  [400, 320, 250, 180].forEach((f, i) => setTimeout(() => tone(f, 'sawtooth', 0.3, 0.1), i * 150));
+}
 
 // ========== GAME STATE ==========
+let state = 'start'; // start | playing | gameover
 let score = 0;
-let level = 1;
-let selected = null;
-let power = 0;
-let combo = 0;
+let wave = 1;
+let lives = 3;
+let keys = {};
+let player, bullets, enemies, particles, stars, powerups;
+let enemyTimer = 0;
+let shootCooldown = 0;
+let invincible = 0;
+let bestScore = parseInt(localStorage.getItem('galaxyBest') || '0');
 
-const scoreEl = document.getElementById('score');
-const scoreBox = document.querySelector('.score-box');
-const logEl = document.getElementById('log');
-const storyEl = document.getElementById('story-text');
-const storyBox = document.querySelector('.story');
-const crystal = document.getElementById('crystal');
-const artifact = document.getElementById('artifact');
-const levelEl = document.getElementById('level');
-const burst = document.getElementById('burst');
-const flash = document.getElementById('flash');
-const comboFill = document.getElementById('combo-fill');
-const comboText = document.getElementById('combo-text');
-const channelBtn = document.getElementById('channel-btn');
+document.getElementById('best-score').textContent = bestScore;
 
-function log(msg, type = '') {
-  const entry = document.createElement('div');
-  entry.className = 'entry' + (type ? ' ' + type : '');
-  entry.textContent = '• ' + msg;
-  logEl.appendChild(entry);
-  logEl.scrollTop = logEl.scrollHeight;
+// ========== ENTITIES ==========
+function createPlayer() {
+  return {
+    x: canvas.width / 2,
+    y: canvas.height - 70,
+    w: 36,
+    h: 40,
+    speed: 5.5,
+    cooldown: 0
+  };
 }
 
-function addScore(amount) {
-  score += amount;
-  scoreEl.textContent = score;
-  scoreBox.classList.add('pop');
-  setTimeout(() => scoreBox.classList.remove('pop'), 250);
-  playScore();
+function createBullet(x, y) {
+  return { x, y, w: 4, h: 14, speed: 11, fromPlayer: true };
 }
 
-function updateComboUI() {
-  const pct = Math.min(combo * 12.5, 100);
-  comboFill.style.width = pct + '%';
-  comboText.textContent = combo > 0 ? `Combo x${combo}` : 'Combo x0';
+function createEnemy(type = 0) {
+  const types = [
+    { w: 32, h: 28, hp: 1, speed: 1.6 + wave * 0.15, score: 10, color: '#ff2d95' },
+    { w: 40, h: 34, hp: 2, speed: 1.2 + wave * 0.1, score: 25, color: '#ffcc00' },
+    { w: 28, h: 24, hp: 1, speed: 2.2 + wave * 0.2, score: 15, color: '#00f0ff' }
+  ];
+  const t = types[type % types.length];
+  return {
+    x: 30 + Math.random() * (canvas.width - 60),
+    y: -40,
+    ...t,
+    type,
+    vx: (Math.random() - 0.5) * 1.5
+  };
 }
 
-const stories = {
-  1: "You stand before the sealed Chamber of Trials. The ancient runes await your touch...",
-  2: "The crystal stirs. Choose the elements wisely to awaken greater power.",
-  3: "The temple responds! Combine forces and channel the energy of the ancients.",
-  4: "You have opened the inner sanctum. The final trial approaches...",
-  5: "Legendary status achieved. The Experiment is complete... for now."
-};
+function createParticle(x, y, color) {
+  return {
+    x, y,
+    vx: (Math.random() - 0.5) * 6,
+    vy: (Math.random() - 0.5) * 6,
+    life: 30 + Math.random() * 20,
+    maxLife: 50,
+    size: 2 + Math.random() * 3,
+    color
+  };
+}
 
-function updateLevel() {
-  let leveled = false;
-  if (score >= 200 && level < 5) {
-    level = 5; levelEl.textContent = 'Legend'; leveled = true;
-  } else if (score >= 120 && level < 4) {
-    level = 4; levelEl.textContent = 'Trial 4'; leveled = true;
-  } else if (score >= 60 && level < 3) {
-    level = 3; levelEl.textContent = 'Trial 3'; leveled = true;
-  } else if (score >= 25 && level < 2) {
-    level = 2; levelEl.textContent = 'Trial 2'; leveled = true;
+function createStars() {
+  const s = [];
+  for (let i = 0; i < 80; i++) {
+    s.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 2,
+      speed: 0.3 + Math.random() * 1.2,
+      alpha: 0.3 + Math.random() * 0.7
+    });
   }
-  if (leveled) {
-    storyEl.textContent = stories[level];
-    storyBox.classList.add('levelup');
-    setTimeout(() => storyBox.classList.remove('levelup'), 2000);
-    log(level === 5 ? 'You have become a Master of the Ancient Experiment!' : 'A new Trial begins...', 'magic');
-    playLevelUp();
-    flash.classList.add('show');
-    setTimeout(() => flash.classList.remove('show'), 300);
+  return s;
+}
+
+// ========== INPUT ==========
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// Touch / mobile
+let touchLeft = false, touchRight = false, touchShoot = false;
+document.getElementById('left-btn').addEventListener('touchstart', e => { e.preventDefault(); touchLeft = true; });
+document.getElementById('left-btn').addEventListener('touchend', () => touchLeft = false);
+document.getElementById('right-btn').addEventListener('touchstart', e => { e.preventDefault(); touchRight = true; });
+document.getElementById('right-btn').addEventListener('touchend', () => touchRight = false);
+document.getElementById('shoot-btn').addEventListener('touchstart', e => { e.preventDefault(); touchShoot = true; });
+document.getElementById('shoot-btn').addEventListener('touchend', () => touchShoot = false);
+
+// Mouse shoot on canvas
+canvas.addEventListener('mousedown', () => { if (state === 'playing') touchShoot = true; });
+canvas.addEventListener('mouseup', () => touchShoot = false);
+
+// ========== GAME FLOW ==========
+function startGame() {
+  initAudio();
+  state = 'playing';
+  score = 0;
+  wave = 1;
+  lives = 3;
+  player = createPlayer();
+  bullets = [];
+  enemies = [];
+  particles = [];
+  powerups = [];
+  stars = createStars();
+  enemyTimer = 0;
+  invincible = 0;
+
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('gameover-screen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  if (window.innerWidth < 500) {
+    document.getElementById('mobile-controls').classList.remove('hidden');
   }
+  updateHUD();
 }
 
-function triggerBurst() {
-  burst.classList.remove('go');
-  void burst.offsetWidth; // reflow
-  burst.classList.add('go');
+function gameOver() {
+  state = 'gameover';
+  sfxGameOver();
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('galaxyBest', bestScore);
+    document.getElementById('best-score').textContent = bestScore;
+  }
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-wave').textContent = wave;
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mobile-controls').classList.add('hidden');
+  document.getElementById('gameover-screen').classList.remove('hidden');
 }
 
-function shake() {
-  document.body.classList.remove('shake');
-  void document.body.offsetWidth;
-  document.body.classList.add('shake');
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('wave').textContent = wave;
+  document.getElementById('lives').textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
 }
 
-// ========== EVENTS ==========
-document.querySelectorAll('.rune-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    initAudio();
-    document.querySelectorAll('.rune-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selected = btn.dataset.power;
-    playRuneSelect();
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('restart-btn').addEventListener('click', startGame);
 
-    const names = {
-      fire: 'Flame of the Ancients',
-      water: 'Tears of the Deep',
-      earth: 'Stone of the First Age',
-      air: 'Breath of the Sky Gods',
-      spirit: 'Essence of the Void'
-    };
-    log(`You invoke the ${names[selected]}.`, 'magic');
+// ========== UPDATE ==========
+function update() {
+  if (state !== 'playing') return;
+
+  // Player movement
+  let move = 0;
+  if (keys['ArrowLeft'] || keys['KeyA'] || touchLeft) move = -1;
+  if (keys['ArrowRight'] || keys['KeyD'] || touchRight) move = 1;
+  player.x += move * player.speed;
+  player.x = Math.max(player.w / 2, Math.min(canvas.width - player.w / 2, player.x));
+
+  // Shooting
+  if (shootCooldown > 0) shootCooldown--;
+  if ((keys['Space'] || touchShoot) && shootCooldown <= 0) {
+    bullets.push(createBullet(player.x - 2, player.y - 20));
+    shootCooldown = 12;
+    sfxShoot();
+  }
+
+  // Bullets
+  bullets.forEach(b => b.y -= b.speed);
+  bullets = bullets.filter(b => b.y > -20);
+
+  // Spawn enemies
+  enemyTimer--;
+  if (enemyTimer <= 0) {
+    const type = Math.random() < 0.2 ? 1 : (Math.random() < 0.3 ? 2 : 0);
+    enemies.push(createEnemy(type));
+    enemyTimer = Math.max(25, 55 - wave * 3);
+  }
+
+  // Enemies
+  enemies.forEach(e => {
+    e.y += e.speed;
+    e.x += e.vx;
+    if (e.x < e.w / 2 || e.x > canvas.width - e.w / 2) e.vx *= -1;
   });
-});
 
-channelBtn.addEventListener('click', () => {
-  initAudio();
-  if (!selected) {
-    log('The runes remain silent. Choose an element first.', 'warn');
-    return;
-  }
+  // Collisions: bullets vs enemies
+  bullets.forEach((b, bi) => {
+    enemies.forEach((e, ei) => {
+      if (b.x > e.x - e.w / 2 && b.x < e.x + e.w / 2 &&
+          b.y > e.y - e.h / 2 && b.y < e.y + e.h / 2) {
+        e.hp--;
+        bullets.splice(bi, 1);
+        sfxHit();
+        for (let i = 0; i < 6; i++) particles.push(createParticle(e.x, e.y, e.color));
+        if (e.hp <= 0) {
+          score += e.score;
+          enemies.splice(ei, 1);
+          sfxExplosion();
+          for (let i = 0; i < 14; i++) particles.push(createParticle(e.x, e.y, e.color));
+          // chance powerup
+          if (Math.random() < 0.08) {
+            powerups.push({ x: e.x, y: e.y, vy: 2, type: 'life' });
+          }
+          // wave progress
+          if (score > wave * 120) {
+            wave++;
+            updateHUD();
+          }
+        }
+        updateHUD();
+      }
+    });
+  });
 
-  power += 1;
-  combo += 1;
-  updateComboUI();
+  // Enemies hit player
+  if (invincible > 0) invincible--;
+  enemies.forEach((e, ei) => {
+    if (invincible <= 0 &&
+        Math.abs(e.x - player.x) < (e.w + player.w) / 2 - 4 &&
+        Math.abs(e.y - player.y) < (e.h + player.h) / 2 - 4) {
+      lives--;
+      invincible = 90;
+      sfxExplosion();
+      for (let i = 0; i < 20; i++) particles.push(createParticle(player.x, player.y, '#00f0ff'));
+      enemies.splice(ei, 1);
+      updateHUD();
+      if (lives <= 0) gameOver();
+    }
+    // enemy off screen
+    if (e.y > canvas.height + 40) {
+      enemies.splice(ei, 1);
+    }
+  });
 
-  const base = 5 + level * 2;
-  const bonus = Math.min(combo, 8);
-  const gained = base + bonus + Math.floor(Math.random() * 4);
+  // Powerups
+  powerups.forEach((p, i) => {
+    p.y += p.vy;
+    if (Math.abs(p.x - player.x) < 25 && Math.abs(p.y - player.y) < 25) {
+      if (p.type === 'life' && lives < 3) {
+        lives++;
+        sfxPower();
+        updateHUD();
+      }
+      powerups.splice(i, 1);
+    }
+    if (p.y > canvas.height) powerups.splice(i, 1);
+  });
 
-  addScore(gained);
-  log(`You channel ${selected.toUpperCase()} energy... +${gained} Essence`, 'gain');
-  playChannel();
+  // Particles
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+  });
+  particles = particles.filter(p => p.life > 0);
 
-  crystal.classList.add('active');
-  artifact.classList.add('powered');
-  channelBtn.classList.add('pulse');
-  triggerBurst();
-  setTimeout(() => {
-    crystal.classList.remove('active');
-    channelBtn.classList.remove('pulse');
-  }, 450);
+  // Stars
+  stars.forEach(s => {
+    s.y += s.speed;
+    if (s.y > canvas.height) {
+      s.y = 0;
+      s.x = Math.random() * canvas.width;
+    }
+  });
+}
 
-  if (power >= 3) {
-    crystal.classList.add('charged');
-    log('The crystal pulses with ancient power!', 'magic');
-  }
+// ========== DRAW ==========
+function drawShip(x, y, color, scale = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, -20);
+  ctx.lineTo(16, 16);
+  ctx.lineTo(6, 10);
+  ctx.lineTo(-6, 10);
+  ctx.lineTo(-16, 16);
+  ctx.closePath();
+  ctx.fill();
+  // cockpit
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(0, -4, 4, 0, Math.PI * 2);
+  ctx.fill();
+  // engine glow
+  ctx.fillStyle = '#ff6600';
+  ctx.beginPath();
+  ctx.moveTo(-5, 12);
+  ctx.lineTo(0, 22 + Math.random() * 6);
+  ctx.lineTo(5, 12);
+  ctx.fill();
+  ctx.restore();
+}
 
-  if (combo >= 5) {
-    const extra = 15;
-    addScore(extra);
-    log(`Combo x${combo}! Bonus +${extra} Essence`, 'gain');
-  }
-
-  // Critical chance
-  if (Math.random() < 0.18) {
-    const crit = 12 + level * 3;
-    addScore(crit);
-    log(`✦ CRITICAL RUNE ALIGNMENT! +${crit}`, 'magic');
-    playCritical();
-    shake();
-    flash.classList.add('show');
-    setTimeout(() => flash.classList.remove('show'), 250);
-  }
-
-  updateLevel();
-});
-
-crystal.addEventListener('click', () => {
-  initAudio();
-  if (power > 0) {
-    const tiny = 2 + Math.floor(Math.random() * 4);
-    addScore(tiny);
-    log(`The crystal responds to your touch... +${tiny}`, 'gain');
-    crystal.classList.add('active');
-    playCrystalTap();
-    triggerBurst();
-    setTimeout(() => crystal.classList.remove('active'), 350);
+function drawEnemy(e) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.fillStyle = e.color;
+  ctx.shadowColor = e.color;
+  ctx.shadowBlur = 12;
+  if (e.type === 1) {
+    // tanky
+    ctx.fillRect(-e.w / 2, -e.h / 2, e.w, e.h);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-6, -6, 12, 12);
+  } else if (e.type === 2) {
+    // fast diamond
+    ctx.beginPath();
+    ctx.moveTo(0, -e.h / 2);
+    ctx.lineTo(e.w / 2, 0);
+    ctx.lineTo(0, e.h / 2);
+    ctx.lineTo(-e.w / 2, 0);
+    ctx.closePath();
+    ctx.fill();
   } else {
-    log('The crystal is still dormant.', 'warn');
+    // basic
+    ctx.beginPath();
+    ctx.moveTo(0, e.h / 2);
+    ctx.lineTo(e.w / 2, -e.h / 2);
+    ctx.lineTo(-e.w / 2, -e.h / 2);
+    ctx.closePath();
+    ctx.fill();
   }
-});
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
 
-document.getElementById('reset-btn').addEventListener('click', () => {
-  initAudio();
-  selected = null;
-  power = 0;
-  combo = 0;
-  updateComboUI();
-  document.querySelectorAll('.rune-btn').forEach(b => b.classList.remove('selected'));
-  crystal.classList.remove('charged', 'active');
-  artifact.classList.remove('powered');
-  playReset();
-  log('The chamber falls silent once more...', 'warn');
-  storyEl.textContent = stories[level] || stories[1];
-});
+function draw() {
+  // clear
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// Start message
-log('The Chamber of Trials awaits...');
-log('Select a rune, then Channel Power to begin the experiment.');
+  // stars
+  stars.forEach(s => {
+    ctx.globalAlpha = s.alpha;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  if (state === 'playing' || state === 'gameover') {
+    // particles
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life / p.maxLife;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // bullets
+    ctx.fillStyle = '#00f0ff';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 8;
+    bullets.forEach(b => {
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    });
+    ctx.shadowBlur = 0;
+
+    // enemies
+    enemies.forEach(drawEnemy);
+
+    // powerups
+    powerups.forEach(p => {
+      ctx.fillStyle = '#00ff88';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('+', p.x, p.y + 4);
+    });
+
+    // player
+    if (state === 'playing') {
+      if (invincible <= 0 || Math.floor(invincible / 4) % 2 === 0) {
+        drawShip(player.x, player.y, '#00f0ff');
+      }
+    }
+  }
+}
+
+// ========== LOOP ==========
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// Initial stars for start screen
+stars = createStars();
