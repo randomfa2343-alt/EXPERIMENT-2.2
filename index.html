@@ -28,68 +28,82 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 12px 16px;
-      font-size: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
       font-weight: 600;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       z-index: 10;
       pointer-events: none;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent);
       text-shadow: 0 1px 3px #000;
     }
     #hud span { color: #00f0ff; }
-    #lives { font-size: 18px; letter-spacing: 4px; }
+    #lives { font-size: 17px; letter-spacing: 3px; }
+    #goal {
+      position: fixed;
+      top: 52px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: #ffcc00;
+      letter-spacing: 0.06em;
+      z-index: 10;
+      pointer-events: none;
+      text-shadow: 0 1px 4px #000;
+      white-space: nowrap;
+    }
     #mobile {
       position: fixed;
-      bottom: 20px; left: 0; right: 0;
+      bottom: 18px; left: 0; right: 0;
       display: none;
       justify-content: center;
-      gap: 24px;
+      gap: 22px;
       z-index: 10;
     }
     #mobile button {
-      width: 70px; height: 70px;
-      font-size: 28px;
+      width: 68px; height: 68px;
+      font-size: 26px;
       background: rgba(0,240,255,0.12);
       border: 2px solid rgba(0,240,255,0.45);
       color: #00f0ff;
       border-radius: 50%;
-      cursor: pointer;
     }
     #mobile button:active { background: rgba(0,240,255,0.35); }
-    #gameover {
+    .overlay {
       position: fixed;
       inset: 0;
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: rgba(0,0,0,0.85);
+      background: rgba(0,0,0,0.88);
       z-index: 20;
       text-align: center;
+      padding: 20px;
     }
-    #gameover h1 {
-      font-size: 2.2rem;
-      color: #ff2d95;
-      margin-bottom: 12px;
-      text-shadow: 0 0 20px #ff2d95;
+    .overlay h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      text-shadow: 0 0 24px currentColor;
     }
-    #gameover p { font-size: 1.2rem; margin: 6px 0; color: #ccc; }
-    #gameover p span { color: #00f0ff; font-size: 1.5rem; }
-    #gameover button {
-      margin-top: 24px;
-      padding: 14px 36px;
-      font-size: 1.1rem;
+    .overlay p { font-size: 1.1rem; margin: 5px 0; color: #ccc; }
+    .overlay p span { color: #00f0ff; font-size: 1.35rem; }
+    .overlay button {
+      margin-top: 22px;
+      padding: 13px 32px;
+      font-size: 1.05rem;
       font-weight: 700;
       background: transparent;
       color: #00f0ff;
       border: 2px solid #00f0ff;
       cursor: pointer;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
     }
-    #gameover button:hover { background: #00f0ff; color: #000; }
+    .overlay button:hover { background: #00f0ff; color: #000; }
+    #levelup h1 { color: #00ff88; }
+    #gameover h1 { color: #ff2d95; }
     @media (max-width: 600px) {
       #mobile { display: flex; }
+      #goal { font-size: 11px; top: 48px; }
     }
   </style>
 </head>
@@ -98,11 +112,12 @@
 
   <div id="hud">
     <div>
+      <div>LVL <span id="level">1</span></div>
       <div>SCORE <span id="score">0</span></div>
-      <div>WAVE <span id="wave">1</span></div>
     </div>
     <div id="lives">❤️❤️❤️</div>
   </div>
+  <div id="goal">Destroy 15 enemies</div>
 
   <div id="mobile">
     <button id="btnL">◀</button>
@@ -110,10 +125,17 @@
     <button id="btnR">▶</button>
   </div>
 
-  <div id="gameover">
+  <div id="levelup" class="overlay">
+    <h1>LEVEL COMPLETE</h1>
+    <p>Level <span id="lu-level">1</span> cleared!</p>
+    <p>Score: <span id="lu-score">0</span></p>
+    <button id="next-level">▶ NEXT LEVEL</button>
+  </div>
+
+  <div id="gameover" class="overlay">
     <h1>MISSION FAILED</h1>
     <p>Score: <span id="fscore">0</span></p>
-    <p>Wave: <span id="fwave">0</span></p>
+    <p>Reached Level <span id="flevel">1</span></p>
     <button id="retry">↺ PLAY AGAIN</button>
   </div>
 
@@ -148,34 +170,53 @@
       boss: () => { tone(90, 'sawtooth', 0.18, 0.12); setTimeout(() => tone(55, 'square', 0.2, 0.09), 50); },
       spawn: () => [180,240,320,420,550].forEach((f,i) => setTimeout(() => tone(f,'sawtooth',0.18,0.09), i*70)),
       power: () => { tone(600,'sine',0.1,0.09); setTimeout(() => tone(900,'sine',0.12,0.09), 70); },
+      level: () => [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f,'triangle',0.3,0.12), i*110)),
       over: () => [380,300,220,150].forEach((f,i) => setTimeout(() => tone(f,'sawtooth',0.28,0.09), i*140))
     };
 
+    // Level definitions: goal kills, enemy mix weight, spawn rate, hasBoss
+    const LEVELS = [
+      { goal: 12,  types: [0,0,0,2],     rate: 40, boss: false, name: 'Scout Patrol' },
+      { goal: 18,  types: [0,0,2,2,3],   rate: 34, boss: false, name: 'Zigzag Swarm' },
+      { goal: 22,  types: [0,1,2,3,4],   rate: 30, boss: false, name: 'Gunners Ahead' },
+      { goal: 15,  types: [1,1,4,5],     rate: 28, boss: false, name: 'Heavy Armor' },
+      { goal: 1,   types: [],            rate: 99, boss: true,  name: 'Boss Fight' },
+      { goal: 25,  types: [0,2,3,4,5],   rate: 26, boss: false, name: 'Mixed Assault' },
+      { goal: 20,  types: [1,1,3,4,5],   rate: 24, boss: false, name: 'Tank Division' },
+      { goal: 30,  types: [0,2,3,4,5,5], rate: 22, boss: false, name: 'Full Invasion' },
+      { goal: 1,   types: [],            rate: 99, boss: true,  name: 'Elite Boss' },
+      { goal: 35,  types: [1,2,3,4,5],   rate: 18, boss: false, name: 'Final Wave' },
+    ];
+
     // State
-    let score = 0, wave = 1, lives = 3, best = +localStorage.getItem('gaBest') || 0;
+    let level = 1, score = 0, lives = 3, kills = 0;
+    let best = +localStorage.getItem('gaBest') || 0;
     let keys = {}, player, bullets = [], eBullets = [], enemies = [], particles = [], stars = [], powerups = [];
-    let eTimer = 15, shootCD = 0, invuln = 0;
-    let boss = null, bossOn = false, bossWave = 0;
+    let eTimer = 20, shootCD = 0, invuln = 0;
+    let boss = null, bossOn = false;
     let left = false, right = false, shoot = false;
-    let running = true;
+    let running = true, paused = false;
+
+    function lvl() { return LEVELS[Math.min(level - 1, LEVELS.length - 1)]; }
 
     function makePlayer() {
       return { x: canvas.width/2, y: canvas.height - 70, w: 34, h: 38, spd: 6 };
     }
-    function makeBullet(x, y, player = true, ang = 0) {
-      const sp = player ? 12 : 4.2;
-      return { x, y, w: player?3:5, h: player?12:8, player, vx: Math.sin(ang)*sp, vy: player ? -sp : Math.cos(ang)*sp };
+    function makeBullet(x, y, isPlayer = true, ang = 0) {
+      const sp = isPlayer ? 12 : 4.2;
+      return { x, y, w: isPlayer?3:5, h: isPlayer?12:8, isPlayer, vx: Math.sin(ang)*sp, vy: isPlayer ? -sp : Math.cos(ang)*sp };
     }
     function makeEnemy(type) {
+      const mult = 1 + (level - 1) * 0.12;
       const T = [
-        { w:30,h:26,hp:1,spd:1.6+wave*0.13,sc:10,c:'#ff2d95' },
-        { w:40,h:34,hp:3,spd:1.0+wave*0.08,sc:30,c:'#ffcc00' },
-        { w:24,h:20,hp:1,spd:2.5+wave*0.2,sc:15,c:'#00f0ff' },
-        { w:32,h:28,hp:2,spd:1.8+wave*0.1,sc:20,c:'#9b5de5' },
-        { w:34,h:30,hp:2,spd:1.3+wave*0.09,sc:35,c:'#00ff88' },
-        { w:18,h:16,hp:1,spd:2.1+wave*0.15,sc:8,c:'#ff6b35' }
+        { w:30,h:26,hp:1,spd:1.5*mult,sc:10,c:'#ff2d95' },
+        { w:40,h:34,hp:2+Math.floor(level/3),spd:0.95*mult,sc:30,c:'#ffcc00' },
+        { w:24,h:20,hp:1,spd:2.4*mult,sc:15,c:'#00f0ff' },
+        { w:32,h:28,hp:2,spd:1.7*mult,sc:20,c:'#9b5de5' },
+        { w:34,h:30,hp:2,spd:1.25*mult,sc:35,c:'#00ff88' },
+        { w:18,h:16,hp:1,spd:2.0*mult,sc:8,c:'#ff6b35' }
       ];
-      const t = T[type%6];
+      const t = T[type % 6];
       return {
         x: 40+Math.random()*(canvas.width-80), y: -30-Math.random()*50,
         ...t, type, vx:(Math.random()-0.5)*(type===3?3.2:1.3),
@@ -184,8 +225,8 @@
     }
     function makeBoss() {
       sfx.spawn();
-      const hp = 35 + wave*10;
-      return { x: canvas.width/2, y: -100, w: 100, h: 75, hp, max: hp, sc: 500+wave*60, c:'#ff0044', vx:2, phase:1, st:35, entry:true };
+      const hp = 30 + level * 12;
+      return { x: canvas.width/2, y: -100, w: 100, h: 75, hp, max: hp, sc: 400+level*80, c:'#ff0044', vx:1.8+level*0.1, phase:1, st:40, entry:true };
     }
     function makePart(x,y,c) {
       return { x,y, vx:(Math.random()-0.5)*8, vy:(Math.random()-0.5)*8, life:20+Math.random()*25, max:45, size:2+Math.random()*3.5, c };
@@ -218,23 +259,75 @@
     document.getElementById('btnS').addEventListener('touchstart', e => { e.preventDefault(); shoot=true; audio(); });
     document.getElementById('btnS').addEventListener('touchend', () => shoot=false);
 
+    function updateGoalText() {
+      const L = lvl();
+      if (L.boss) {
+        document.getElementById('goal').textContent = bossOn ? '⚠ DEFEAT THE BOSS' : 'Boss incoming...';
+      } else {
+        document.getElementById('goal').textContent = `Destroy ${Math.max(0, L.goal - kills)} enemies · ${L.name}`;
+      }
+    }
+
     function hud() {
+      document.getElementById('level').textContent = level;
       document.getElementById('score').textContent = score;
-      document.getElementById('wave').textContent = wave + (bossOn ? ' ⚠ BOSS' : '');
       document.getElementById('lives').textContent = '❤️'.repeat(Math.max(0,lives)) + '🖤'.repeat(Math.max(0,3-lives));
+      updateGoalText();
+    }
+
+    function startLevel() {
+      kills = 0;
+      enemies = [];
+      eBullets = [];
+      bullets = [];
+      boss = null;
+      bossOn = false;
+      eTimer = 15;
+      const L = lvl();
+      if (L.boss) {
+        // short delay then spawn boss
+        setTimeout(() => {
+          if (running && !paused) {
+            boss = makeBoss();
+            bossOn = true;
+            hud();
+          }
+        }, 800);
+      }
+      hud();
+    }
+
+    function completeLevel() {
+      paused = true;
+      running = false;
+      sfx.level();
+      document.getElementById('lu-level').textContent = level;
+      document.getElementById('lu-score').textContent = score;
+      document.getElementById('levelup').style.display = 'flex';
+    }
+
+    function nextLevel() {
+      document.getElementById('levelup').style.display = 'none';
+      level++;
+      // bonus life every 3 levels
+      if (level % 3 === 1 && lives < 3) lives++;
+      paused = false;
+      running = true;
+      startLevel();
     }
 
     function start() {
       audio();
       resize();
-      score=0; wave=1; lives=3;
+      level = 1; score = 0; lives = 3; kills = 0;
       player = makePlayer();
       bullets=[]; eBullets=[]; enemies=[]; particles=[]; powerups=[];
       stars = makeStars();
-      eTimer=12; invuln=0; boss=null; bossOn=false; bossWave=0;
-      running=true;
+      eTimer=15; invuln=0; boss=null; bossOn=false;
+      running=true; paused=false;
       document.getElementById('gameover').style.display = 'none';
-      hud();
+      document.getElementById('levelup').style.display = 'none';
+      startLevel();
     }
 
     function die() {
@@ -242,14 +335,15 @@
       sfx.over();
       if (score > best) { best=score; localStorage.setItem('gaBest', best); }
       document.getElementById('fscore').textContent = score;
-      document.getElementById('fwave').textContent = wave;
+      document.getElementById('flevel').textContent = level;
       document.getElementById('gameover').style.display = 'flex';
     }
 
     document.getElementById('retry').addEventListener('click', start);
+    document.getElementById('next-level').addEventListener('click', nextLevel);
 
     function update() {
-      if (!running) return;
+      if (!running || paused) return;
 
       // Move
       let m = 0;
@@ -270,26 +364,29 @@
       eBullets.forEach(b => { b.x+=b.vx; b.y+=b.vy; });
       eBullets = eBullets.filter(b => b.y<canvas.height+20);
 
-      // Boss every 5 waves
-      if (!bossOn && wave>=5 && wave%5===0 && bossWave!==wave && enemies.length<2) {
-        boss = makeBoss(); bossOn=true; bossWave=wave; enemies=[]; hud();
-      }
+      const L = lvl();
 
-      // Spawn
-      if (!bossOn) {
+      // Spawn enemies (only if not boss level or boss not yet out)
+      if (!bossOn && !L.boss) {
         eTimer--;
         if (eTimer<=0) {
-          const r=Math.random();
-          let t=0;
-          if(r<0.12)t=5; else if(r<0.25)t=1; else if(r<0.4)t=2; else if(r<0.55)t=3; else if(r<0.7)t=4;
-          if (t===5) {
-            for(let i=0;i<3;i++){ const e=makeEnemy(5); e.x=50+Math.random()*(canvas.width-100); e.y=-20-i*30; enemies.push(e); }
-          } else enemies.push(makeEnemy(t));
-          eTimer = Math.max(14, 45-wave*2);
+          const types = L.types;
+          const type = types[Math.floor(Math.random()*types.length)];
+          if (type === 5) {
+            for (let i=0;i<3;i++) {
+              const e = makeEnemy(5);
+              e.x = 50+Math.random()*(canvas.width-100);
+              e.y = -20-i*28;
+              enemies.push(e);
+            }
+          } else {
+            enemies.push(makeEnemy(type));
+          }
+          eTimer = Math.max(12, L.rate - level);
         }
       }
 
-      // Enemies
+      // Enemies move
       enemies.forEach(e => {
         e.y+=e.spd; e.x+=e.vx;
         if(e.type===3){ e.ang+=0.09; e.x+=Math.sin(e.ang)*2.3; }
@@ -298,7 +395,7 @@
           e.st--;
           if(e.st<=0 && e.y>40 && e.y<canvas.height*0.6){
             eBullets.push(makeBullet(e.x, e.y+8, false, Math.atan2(player.x-e.x, player.y-e.y)));
-            e.st=60+Math.random()*40;
+            e.st=55+Math.random()*40;
           }
         }
       });
@@ -318,12 +415,12 @@
               eBullets.push(makeBullet(boss.x, boss.y+35, false, Math.PI+sp));
             }
             if(boss.phase===2) eBullets.push(makeBullet(boss.x, boss.y+20, false, Math.atan2(player.x-boss.x, player.y-boss.y)));
-            boss.st = boss.phase===2 ? 28 : 48;
+            boss.st = boss.phase===2 ? 26 : 46;
           }
         }
       }
 
-      // Hits: player bullets → enemies
+      // Player bullets → enemies
       for(let bi=bullets.length-1;bi>=0;bi--){
         const b=bullets[bi];
         for(let ei=enemies.length-1;ei>=0;ei--){
@@ -332,17 +429,21 @@
             e.hp--; bullets.splice(bi,1); sfx.hit();
             for(let i=0;i<5;i++) particles.push(makePart(e.x,e.y,e.c));
             if(e.hp<=0){
-              score+=e.sc; enemies.splice(ei,1); sfx.boom();
+              score+=e.sc; kills++; enemies.splice(ei,1); sfx.boom();
               for(let i=0;i<12;i++) particles.push(makePart(e.x,e.y,e.c));
               if(Math.random()<0.1) powerups.push({x:e.x,y:e.y,vy:2.3,type:Math.random()<0.6?'life':'score'});
-              if(score>wave*140){ wave++; hud(); }
+              // check level goal
+              if (!L.boss && kills >= L.goal) {
+                completeLevel();
+                return;
+              }
             }
             hud(); break;
           }
         }
       }
 
-      // Hits: player bullets → boss
+      // Player bullets → boss
       if(bossOn&&boss){
         for(let bi=bullets.length-1;bi>=0;bi--){
           const b=bullets[bi];
@@ -355,7 +456,9 @@
               for(let i=0;i<15;i++) particles.push(makePart(boss.x,boss.y,'#ffcc00'));
               powerups.push({x:boss.x,y:boss.y,vy:1.5,type:'life'});
               powerups.push({x:boss.x-30,y:boss.y,vy:1.8,type:'score'});
-              bossOn=false; boss=null; wave++; hud();
+              bossOn=false; boss=null;
+              completeLevel();
+              return;
             }
             hud();
           }
@@ -405,7 +508,6 @@
         } else if(p.y>canvas.height) powerups.splice(i,1);
       }
 
-      // Particles & stars
       particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.life--; p.vx*=0.94; p.vy*=0.94; });
       particles = particles.filter(p=>p.life>0);
       stars.forEach(s=>{ s.y+=s.spd*(bossOn?1.7:1); if(s.y>canvas.height){ s.y=0; s.x=Math.random()*canvas.width; } });
@@ -494,7 +596,6 @@
       requestAnimationFrame(loop);
     }
 
-    // Start immediately
     start();
     loop();
   </script>
